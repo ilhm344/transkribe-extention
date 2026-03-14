@@ -4,6 +4,7 @@ if (import.meta.env.DEV) console.log('[popup] loaded');
 
 const startBtn = document.getElementById('startBtn') as HTMLButtonElement;
 const statusEl = document.getElementById('status') as HTMLParagraphElement;
+const settingsBtn = document.getElementById('settingsBtn') as HTMLButtonElement;
 
 let isRecording = false;
 let recordingStartMs = 0;
@@ -60,6 +61,11 @@ async function restoreState(): Promise<void> {
 void restoreState();
 
 // ─── Button handler ───────────────────────────────────────────────────────────
+
+settingsBtn.addEventListener('click', () => {
+  if (import.meta.env.DEV) console.log('[popup] opening options page');
+  chrome.runtime.openOptionsPage();
+});
 
 startBtn.addEventListener('click', () => {
   console.debug('[popup] button clicked, isRecording:', isRecording);
