@@ -23,30 +23,43 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
  *   3. summarize (Claude Sonnet)
  */
 export async function runPipeline(data: MeetingData, onProgress?: OnProgress): Promise<PipelineResult> {
-  if (import.meta.env.DEV) console.log('[pipeline] start — platform:', data.platform, '| meetingId:', data.meetingId);
+  const t0 = Date.now();
+  console.log('[pipeline] ▶ start — platform:', data.platform, '| meetingId:', data.meetingId,
+    '| speakerLog entries:', data.speakerLog.log.length);
 
   const keys = await loadApiKeys();
-  if (!keys?.openaiKey || !keys?.anthropicKey) {
-    throw new Error('API keys not configured. Open Settings and enter your OpenAI and Anthropic keys.');
+  if (!keys?.openaiKey) {
+    throw new Error('API ключ не настроен. Откройте Настройки и введите ваш OpenAI ключ.');
   }
 
   // Step 1: Transcription
   onProgress?.('transcribing');
   const audioBlob = base64ToBlob(data.audioBase64, data.audioMimeType);
-  if (import.meta.env.DEV) console.log('[pipeline] transcribing — blob size:', audioBlob.size);
+  const audioMb = (audioBlob.size / 1024 / 1024).toFixed(2);
+  console.log('[pipeline] step 1 — transcribing | blob:', audioMb, 'MB | mimeType:', data.audioMimeType);
+  const t1 = Date.now();
   const whisper = await transcribeAudio(audioBlob, keys.openaiKey);
+  console.log('[pipeline] step 1 done — Whisper took', Date.now() - t1, 'ms',
+    '| language:', whisper.language, '| duration:', whisper.duration?.toFixed(1), 's',
+    '| segments:', whisper.segments.length,
+    '| text preview:', whisper.text?.slice(0, 80));
 
   // Step 2: Diarization
   onProgress?.('diarizing');
+  console.log('[pipeline] step 2 — diarizing');
   const diarized = diarize(whisper.segments, data.speakerLog, data.recordingStartMs);
+  console.log('[pipeline] step 2 done — diarized segments:', diarized.length,
+    '| speakers:', [...new Set(diarized.map(s => s.speaker))].join(', '));
 
   // Step 3: AI Summary
   onProgress?.('summarizing');
-  const { summary, actionItems } = await summarize(diarized, keys.anthropicKey);
+  console.log('[pipeline] step 3 — summarizing');
+  const t3 = Date.now();
+  const { summary, actionItems } = await summarize(diarized, keys.openaiKey);
+  console.log('[pipeline] step 3 done — GPT took', Date.now() - t3, 'ms',
+    '| actionItems:', actionItems.length);
 
-  if (import.meta.env.DEV) {
-    console.log('[pipeline] done — diarized:', diarized.length, '| summary length:', summary.length, '| actionItems:', actionItems.length);
-  }
+  console.log('[pipeline] ✓ complete — total time:', Date.now() - t0, 'ms');
 
   return { diarized, summary, actionItems };
 }

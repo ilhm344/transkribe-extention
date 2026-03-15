@@ -57,5 +57,4 @@ export interface PipelineResult {
 /** API keys stored securely in chrome.storage.local */
 export interface ApiKeys {
   openaiKey: string;
-  anthropicKey: string;
 }

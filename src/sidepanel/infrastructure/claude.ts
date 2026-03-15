@@ -7,24 +7,25 @@ function formatTime(seconds: number): string {
 }
 
 /**
- * Sends diarized transcript to Claude Sonnet.
+ * Sends diarized transcript to OpenAI GPT-4o.
  * Returns meeting summary and action items with real speaker names.
  */
 export async function summarize(
   segments: DiarizedSegment[],
-  anthropicKey: string,
+  openaiKey: string,
 ): Promise<Pick<PipelineResult, 'summary' | 'actionItems'>> {
-  if (import.meta.env.DEV) console.log('[claude] summarize start — segments:', segments.length);
-
   const transcript = segments
     .map(s => `[${formatTime(s.start)}] ${s.speaker}: ${s.text.trim()}`)
     .join('\n');
+
+  console.log('[summarize] start — segments:', segments.length, '| transcript chars:', transcript.length);
 
   const prompt = `You are analyzing a meeting transcript. Each line is formatted as [timestamp] Speaker: text.
 
 TRANSCRIPT:
 ${transcript}
 
+Respond in the SAME LANGUAGE as the transcript (if the transcript is in Russian, respond in Russian).
 Provide a concise meeting summary (3–5 sentences) and a list of action items with responsible persons.
 Respond with valid JSON only, no extra text:
 {
@@ -32,15 +33,14 @@ Respond with valid JSON only, no extra text:
   "actionItems": ["Person: action 1", "Person: action 2"]
 }`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': anthropicKey,
-      'anthropic-version': '2023-06-01',
+      'Authorization': `Bearer ${openaiKey}`,
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: 'gpt-4o-mini',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -48,16 +48,16 @@ Respond with valid JSON only, no extra text:
 
   if (!res.ok) {
     const err = await res.text();
-    console.error('[claude] API error:', res.status, err);
-    if (res.status === 401) throw new Error('Неверный Anthropic API ключ. Проверьте настройки.');
-    if (res.status === 429) throw new Error('Anthropic: превышен лимит запросов. Подождите и попробуйте снова.');
-    throw new Error(`Anthropic Claude: ошибка ${res.status}`);
+    console.error('[summarize] API error:', res.status, err);
+    if (res.status === 401) throw new Error('Неверный OpenAI API ключ. Проверьте настройки.');
+    if (res.status === 429) throw new Error('OpenAI: превышен лимит запросов. Подождите и попробуйте снова.');
+    throw new Error(`OpenAI GPT: ошибка ${res.status}`);
   }
 
   const data = await res.json();
-  const text: string = data.content?.[0]?.text ?? '';
+  const text: string = data.choices?.[0]?.message?.content ?? '';
 
-  if (import.meta.env.DEV) console.log('[claude] raw response:', text);
+  console.log('[summarize] raw response:', text?.slice(0, 200));
 
   // Strip markdown code fences if present
   const jsonText = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
@@ -66,13 +66,12 @@ Respond with valid JSON only, no extra text:
   try {
     parsed = JSON.parse(jsonText);
   } catch {
-    console.error('[claude] JSON parse failed, raw text:', text);
-    throw new Error('Claude returned malformed JSON');
+    console.error('[summarize] JSON parse failed, raw text:', text);
+    throw new Error('GPT returned malformed JSON');
   }
 
-  if (import.meta.env.DEV) {
-    console.log('[claude] summarize done — actionItems:', parsed.actionItems?.length ?? 0);
-  }
+  console.log('[summarize] done — summary chars:', parsed.summary?.length ?? 0,
+    '| actionItems:', parsed.actionItems?.length ?? 0);
 
   return {
     summary: parsed.summary ?? '',
