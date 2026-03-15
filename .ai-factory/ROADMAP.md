@@ -9,7 +9,7 @@
 - [x] **Popup UI** — кнопка старт/стоп, индикатор статуса записи
 - [ ] **Speaker Tracker** — content script, MutationObserver для Google Meet + Yandex Telemost, speaker log JSON
 - [ ] **Options Page** — ввод API-ключей (OpenAI + Anthropic), сохранение в chrome.storage.local
-- [ ] **Transcription** — отправка .webm → OpenAI Whisper verbose_json → сегменты с таймкодами
+- [x] **Transcription** — отправка .webm → OpenAI Whisper verbose_json → сегменты с таймкодами
 - [ ] **Diarization** — мёрж STT-сегментов со speaker log по таймкодам → DiarizedSegment[] с реальными именами
 - [ ] **AI Summary** — диаризованный транскрипт → Claude Sonnet → резюме + action items
 - [ ] **Sidepanel UI** — React: транскрипт, диаризация, резюме, состояния пайплайна (loading/error/done)
@@ -24,3 +24,4 @@
 | Project Scaffold | 2026-03-14 |
 | Audio Recording  | 2026-03-14 |
 | Popup UI         | 2026-03-14 |
+| Transcription    | 2026-03-15 |

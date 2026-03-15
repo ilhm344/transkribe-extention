@@ -1,17 +1,36 @@
-// TODO: implement in Transcription milestone
 import type { WhisperResponse } from '../../shared/types';
 
 /**
  * Sends audio blob to OpenAI Whisper API (verbose_json mode).
  * Returns segments with timestamps for diarization merge.
  *
- * TODO: implement in Transcription milestone.
  * Reference: https://platform.openai.com/docs/guides/speech-to-text
  */
 export async function transcribeAudio(
-  _audioBlob: Blob,
-  _openaiKey: string,
+  audioBlob: Blob,
+  openaiKey: string,
 ): Promise<WhisperResponse> {
-  if (import.meta.env.DEV) console.log('[stt] transcribeAudio called — TODO: implement');
-  throw new Error('transcribeAudio not yet implemented');
+  if (import.meta.env.DEV) console.log('[stt] transcribeAudio start, size:', audioBlob.size);
+
+  const form = new FormData();
+  form.append('file', audioBlob, 'audio.webm');
+  form.append('model', 'whisper-1');
+  form.append('response_format', 'verbose_json');
+  form.append('timestamp_granularities[]', 'segment');
+
+  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${openaiKey}` },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('[stt] Whisper API error:', res.status, err);
+    throw new Error(`Whisper API error ${res.status}: ${err}`);
+  }
+
+  const data: WhisperResponse = await res.json();
+  if (import.meta.env.DEV) console.log('[stt] transcribeAudio done, segments:', data.segments.length);
+  return data;
 }
