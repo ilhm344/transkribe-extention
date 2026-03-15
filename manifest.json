@@ -2,7 +2,8 @@
   "manifest_version": 3,
   "name": "Transkribe",
   "version": "0.1.0",
-  "description": "Post-meeting transcription with speaker diarization and AI summary",
+  "description": "Автоматически транскрибирует звонки в Google Meet и Яндекс Телемост, определяет спикеров и формирует AI-резюме встречи.",
+  "minimum_chrome_version": "116",
   "permissions": [
     "tabCapture",
     "offscreen",

@@ -11,6 +11,6 @@ export default defineConfig({
     crx({ manifest }),
   ],
   build: {
-    minify: false, // readable output for development
+    minify: true,
   },
 });
