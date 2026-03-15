@@ -108,31 +108,37 @@ function isMeetingUrl(url: string): boolean {
   return MEETING_DOMAINS.some(domain => url.includes(domain));
 }
 
+function openSidePanelForMeetingTab(tabId: number, source: string) {
+  void chrome.sidePanel.setOptions({ tabId, enabled: true, path: 'src/sidepanel/index.html' });
+  chrome.sidePanel.open({ tabId }).then(() => {
+    console.log('[bg] sidepanel opened (' + source + ') for tabId:', tabId);
+    chrome.action.setBadgeText({ text: '', tabId });
+  }).catch(err => {
+    console.warn('[bg] sidepanel.open failed (' + source + '):', String(err));
+    chrome.action.setBadgeText({ text: '⬡', tabId });
+    chrome.action.setBadgeBackgroundColor({ color: '#3b82f6', tabId });
+  });
+}
+
+// Strategy 1: tab finishes loading a meeting URL
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status !== 'complete') return;
   const url = tab.url ?? '';
-
   if (!isMeetingUrl(url)) {
-    // Clear badge if navigated away from a meeting tab
-    if (activeTabId === tabId) {
-      chrome.action.setBadgeText({ text: '', tabId });
-    }
+    chrome.action.setBadgeText({ text: '', tabId });
     return;
   }
+  console.log('[bg] meeting tab detected (onUpdated) — tabId:', tabId, '| url:', url);
+  openSidePanelForMeetingTab(tabId, 'onUpdated');
+});
 
-  console.log('[bg] meeting tab detected — tabId:', tabId, '| url:', url);
-
-  // Enable side panel for this specific tab
-  void chrome.sidePanel.setOptions({ tabId, enabled: true, path: 'sidepanel.html' });
-
-  // Try to open side panel — works in Chrome 116+ from event handlers
-  chrome.sidePanel.open({ tabId }).then(() => {
-    console.log('[bg] sidepanel opened for meeting tab:', tabId);
-  }).catch(err => {
-    // Fallback: set a badge to signal the user to open the panel
-    console.warn('[bg] sidepanel.open failed, setting badge fallback:', String(err));
-    chrome.action.setBadgeText({ text: '●', tabId });
-    chrome.action.setBadgeBackgroundColor({ color: '#ef4444', tabId });
+// Strategy 2: user switches to / activates a meeting tab
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  chrome.tabs.get(tabId, (tab) => {
+    if (chrome.runtime.lastError || !tab.url) return;
+    if (!isMeetingUrl(tab.url)) return;
+    console.log('[bg] meeting tab activated (onActivated) — tabId:', tabId);
+    openSidePanelForMeetingTab(tabId, 'onActivated');
   });
 });
 

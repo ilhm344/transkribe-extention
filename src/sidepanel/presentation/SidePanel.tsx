@@ -503,7 +503,16 @@ export function SidePanel() {
 
   return (
     <div className="p-4 min-h-screen bg-white">
-      <h1 className="text-xl font-bold mb-4 text-gray-900">Transkribe</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold text-gray-900">Transkribe</h1>
+        <button
+          onClick={() => chrome.runtime.openOptionsPage()}
+          title="Настройки"
+          className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors"
+        >
+          ⚙️
+        </button>
+      </div>
 
       {status.state === 'idle' && (
         <p className="text-gray-400 text-sm text-center mt-12">
