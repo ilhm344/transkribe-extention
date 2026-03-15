@@ -12,9 +12,7 @@ export function diarize(
   speakerLog: SpeakerLog,
   recordingStartMs: number,
 ): DiarizedSegment[] {
-  if (import.meta.env.DEV) {
-    console.log('[diarize] start — segments:', segments.length, '| speakerLog entries:', speakerLog.log.length);
-  }
+  console.log('[diarize] start — segments:', segments.length, '| speakerLog entries:', speakerLog.log.length);
 
   const result: DiarizedSegment[] = segments.map(seg => {
     const segStartMs = recordingStartMs + seg.start * 1000;
@@ -41,8 +39,6 @@ export function diarize(
     return { start: seg.start, end: seg.end, speaker: bestSpeaker, text: seg.text };
   });
 
-  if (import.meta.env.DEV) {
-    console.log('[diarize] done — diarized segments:', result.length);
-  }
+  console.log('[diarize] done — diarized segments:', result.length);
   return result;
 }

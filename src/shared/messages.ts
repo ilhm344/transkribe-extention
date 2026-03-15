@@ -19,6 +19,8 @@ export const MSG = {
   // content → background
   SPEAKER_LOG_READY: 'SPEAKER_LOG_READY',
   MEETING_ENDED:     'MEETING_ENDED',
+  // offscreen → background (diagnostics)
+  OFFSCREEN_LOG:     'OFFSCREEN_LOG',
 } as const;
 
 export type MsgType = typeof MSG[keyof typeof MSG];

@@ -18,6 +18,7 @@ interface PendingAudio {
 
 let pendingAudio: PendingAudio | null = null;
 let pendingSpeakerLog: SpeakerLog | null = null;
+let speakerLogTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -49,7 +50,28 @@ async function ensureOffscreenDocument(): Promise<void> {
 
 async function checkBothReady(): Promise<void> {
   console.debug('[bg] checkBothReady: audio ready:', !!pendingAudio, '| speakerLog ready:', !!pendingSpeakerLog);
-  if (!pendingAudio || !pendingSpeakerLog) return;
+  if (!pendingAudio) return;
+
+  // If speaker log not yet received, wait up to 3s then proceed with empty log
+  if (!pendingSpeakerLog) {
+    if (!speakerLogTimeoutId) {
+      console.debug('[bg] waiting up to 3s for speakerLog...');
+      speakerLogTimeoutId = setTimeout(() => {
+        speakerLogTimeoutId = null;
+        if (pendingAudio && !pendingSpeakerLog) {
+          console.warn('[bg] speakerLog timeout — proceeding without speaker data');
+          pendingSpeakerLog = { recordingStartMs: pendingAudio.recordingStartMs, log: [] };
+          void checkBothReady();
+        }
+      }, 3000);
+    }
+    return;
+  }
+
+  if (speakerLogTimeoutId) {
+    clearTimeout(speakerLogTimeoutId);
+    speakerLogTimeoutId = null;
+  }
 
   console.debug('[bg] both audio+speakerLog ready → saving MeetingData + opening sidepanel');
 
@@ -70,11 +92,6 @@ async function checkBothReady(): Promise<void> {
 
     await saveMeetingData(meetingData);
     console.debug('[bg] MeetingData saved — platform:', platform, '| meetingId:', meetingId);
-
-    if (activeTabId !== null) {
-      await chrome.sidePanel.open({ tabId: activeTabId });
-      console.debug('[bg] sidepanel opened for tabId:', activeTabId);
-    }
 
     pendingAudio = null;
     pendingSpeakerLog = null;
@@ -115,11 +132,13 @@ chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
       void handleMeetingEnded();
       break;
 
+    case MSG.OFFSCREEN_LOG:
+      console.log('[offscreen]', ...(message.payload?.args ?? []));
+      break;
+
     default:
       console.warn('[bg] unknown message type:', message.type);
   }
-
-  return true; // keep sendResponse channel open for async responses
 });
 
 // ─── Handler: RECORDING_START ─────────────────────────────────────────────────

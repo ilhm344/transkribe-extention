@@ -67,10 +67,23 @@ settingsBtn.addEventListener('click', () => {
   chrome.runtime.openOptionsPage();
 });
 
-startBtn.addEventListener('click', () => {
+startBtn.addEventListener('click', async () => {
   console.debug('[popup] button clicked, isRecording:', isRecording);
 
   if (!isRecording) {
+    // Check mic permission — offscreen can't show permission prompts
+    try {
+      const perm = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+      if (perm.state !== 'granted') {
+        console.debug('[popup] mic not granted, opening options page');
+        statusEl.textContent = 'Разрешите микрофон в настройках';
+        chrome.runtime.openOptionsPage();
+        return;
+      }
+    } catch {
+      // permissions.query not supported — proceed anyway
+    }
+
     chrome.runtime.sendMessage({ type: MSG.RECORDING_START });
     isRecording = true;
     recordingStartMs = Date.now();
@@ -78,14 +91,27 @@ startBtn.addEventListener('click', () => {
     startTimer(recordingStartMs);
     console.debug('[popup] RECORDING_START sent');
   } else {
+    // Send stop FIRST — sidePanel.open() may close the popup by stealing focus
     chrome.runtime.sendMessage({ type: MSG.RECORDING_STOP });
+    console.debug('[popup] RECORDING_STOP sent');
+
     isRecording = false;
     recordingStartMs = 0;
     stopTimer();
     startBtn.textContent = 'Начать запись';
     startBtn.classList.replace('bg-red-500', 'bg-blue-500');
     startBtn.classList.replace('hover:bg-red-600', 'hover:bg-blue-600');
-    statusEl.textContent = 'Запись остановлена';
-    console.debug('[popup] RECORDING_STOP sent');
+    statusEl.textContent = 'Обрабатывается...';
+
+    // Open side panel AFTER stop is sent — user gesture context is still active
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        void chrome.sidePanel.open({ tabId: tab.id });
+        console.debug('[popup] sidePanel.open called for tabId:', tab.id);
+      }
+    } catch (err) {
+      console.warn('[popup] could not open side panel:', err);
+    }
   }
 });

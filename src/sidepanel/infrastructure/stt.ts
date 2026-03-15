@@ -10,7 +10,7 @@ export async function transcribeAudio(
   audioBlob: Blob,
   openaiKey: string,
 ): Promise<WhisperResponse> {
-  if (import.meta.env.DEV) console.log('[stt] transcribeAudio start, size:', audioBlob.size);
+  console.log('[stt] transcribeAudio start — size:', audioBlob.size, 'bytes | type:', audioBlob.type);
 
   const form = new FormData();
   form.append('file', audioBlob, 'audio.webm');
@@ -34,6 +34,8 @@ export async function transcribeAudio(
   }
 
   const data: WhisperResponse = await res.json();
-  if (import.meta.env.DEV) console.log('[stt] transcribeAudio done, segments:', data.segments.length);
+  console.log('[stt] transcribeAudio done — language:', data.language,
+    '| duration:', data.duration?.toFixed(1), 's | segments:', data.segments.length,
+    '| text:', data.text?.slice(0, 100));
   return data;
 }

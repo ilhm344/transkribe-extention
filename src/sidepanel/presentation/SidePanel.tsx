@@ -157,21 +157,45 @@ export function SidePanel() {
     setRunKey(k => k + 1);
   }, []);
 
+  // Trigger pipeline when background saves meetingData after recording stops
+  useEffect(() => {
+    console.log('[SidePanel] mounted — listening for meetingData in storage');
+    function onStorageChanged(changes: Record<string, chrome.storage.StorageChange>) {
+      if ('meetingData' in changes) {
+        if (changes.meetingData.newValue) {
+          const mb = (JSON.stringify(changes.meetingData.newValue).length / 1024 / 1024).toFixed(2);
+          console.log('[SidePanel] meetingData appeared in storage (~' + mb + ' MB) → starting pipeline');
+          cancelRef.current = false;
+          setRunKey(k => k + 1);
+        } else {
+          console.log('[SidePanel] meetingData removed from storage');
+        }
+      }
+    }
+    chrome.storage.local.onChanged.addListener(onStorageChanged);
+    return () => chrome.storage.local.onChanged.removeListener(onStorageChanged);
+  }, []);
+
   useEffect(() => {
     cancelRef.current = false;
 
     async function start() {
-      if (import.meta.env.DEV) console.log('[SidePanel] run #' + runKey + ' — loading meeting data');
+      console.log('[SidePanel] run #' + runKey + ' — loading meeting data from storage');
 
       const data = await loadMeetingData();
       if (!data) {
-        if (import.meta.env.DEV) console.log('[SidePanel] no meeting data found');
+        console.log('[SidePanel] no meeting data found — showing idle state');
         setStatus({ state: 'idle' });
         return;
       }
 
+      console.log('[SidePanel] meeting data loaded — platform:', data.platform,
+        '| meetingId:', data.meetingId,
+        '| audioBase64 length:', data.audioBase64.length,
+        '| speakerLog entries:', data.speakerLog.log.length);
+
       if (cancelRef.current) return;
-      if (import.meta.env.DEV) console.log('[SidePanel] starting pipeline');
+      console.log('[SidePanel] starting pipeline');
 
       try {
         setStatus({ state: 'running', step: 'transcribing' });
