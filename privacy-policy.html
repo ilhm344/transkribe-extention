@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Transkribe — Политика конфиденциальности</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 20px; color: #111; line-height: 1.6; }
+    h1 { font-size: 1.6rem; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; }
+    a  { color: #1d4ed8; }
+  </style>
+</head>
+<body>
+
+<h1>Политика конфиденциальности Transkribe</h1>
+<p><em>Дата последнего обновления: 15 марта 2026 г.</em></p>
+
+<p>
+  Transkribe — расширение для Google Chrome, которое записывает аудио
+  из вкладки браузера и микрофона, транскрибирует его с помощью OpenAI Whisper
+  и создаёт AI-резюме встречи через Anthropic Claude.
+</p>
+
+<h2>Какие данные мы собираем</h2>
+<ul>
+  <li>
+    <strong>Аудиозапись встречи.</strong> Аудио захватывается только во время
+    активной записи, инициированной пользователем, и нигде не сохраняется
+    постоянно — оно передаётся в API и сразу удаляется из памяти.
+  </li>
+  <li>
+    <strong>API-ключи.</strong> Ключи OpenAI и Anthropic, введённые
+    пользователем, хранятся локально в <code>chrome.storage.local</code> только
+    на устройстве пользователя и никуда не передаются расширением.
+  </li>
+  <li>
+    <strong>Данные о спикерах.</strong> Имена участников встречи (из интерфейса
+    Google Meet / Яндекс Телемост) используются только для диаризации
+    транскрипта и не сохраняются после закрытия браузерной сессии.
+  </li>
+</ul>
+
+<h2>Передача данных третьим сторонам</h2>
+<ul>
+  <li>
+    <strong>OpenAI (Whisper API).</strong> Аудиофайл отправляется на
+    <a href="https://platform.openai.com/docs/guides/speech-to-text" target="_blank">api.openai.com</a>
+    для транскрибирования. Применяются
+    <a href="https://openai.com/policies/privacy-policy" target="_blank">политика конфиденциальности OpenAI</a>.
+  </li>
+  <li>
+    <strong>Anthropic (Claude API).</strong> Диаризованный транскрипт отправляется на
+    <a href="https://docs.anthropic.com" target="_blank">api.anthropic.com</a>
+    для генерации резюме. Применяются
+    <a href="https://www.anthropic.com/privacy" target="_blank">политика конфиденциальности Anthropic</a>.
+  </li>
+</ul>
+<p>Расширение не собирает и не передаёт данные ни в какие другие сервисы.</p>
+
+<h2>Хранение данных</h2>
+<p>
+  Расширение не использует удалённые серверы для хранения пользовательских данных.
+  Весь транскрипт и результаты резюме хранятся только локально в памяти
+  браузера и очищаются при перезагрузке страницы.
+</p>
+
+<h2>Права пользователей</h2>
+<p>
+  Вы можете в любой момент удалить API-ключи на странице настроек расширения
+  или полностью удалить расширение, что удалит все связанные локальные данные.
+</p>
+
+<h2>Контакт</h2>
+<p>
+  По вопросам конфиденциальности создайте issue в
+  <a href="https://github.com/your-org/transkribe-extention/issues" target="_blank">репозитории проекта</a>.
+</p>
+
+</body>
+</html>
