@@ -1,22 +1,48 @@
-// TODO: implement in Diarization milestone
 import type { SttSegment, SpeakerLog, DiarizedSegment } from '../../shared/types';
 
 /**
- * Merges STT segments (Speaker N + timestamps) with DOM speaker log (real names + timestamps).
- * For each STT segment, finds the speaker log entry with maximum timestamp overlap.
+ * Merges STT segments with DOM speaker log via maximum timestamp overlap.
  *
- * @param segments - Array of STT segments from Whisper verbose_json
- * @param speakerLog - Speaker log captured by content script during meeting
- * @param recordingStartMs - absolute Date.now() at recording start (sync point)
- * @returns DiarizedSegment[] with real speaker names
- *
- * TODO: implement timestamp overlap merge algorithm in Diarization milestone.
+ * STT segments have relative times (seconds from recording start).
+ * Speaker log entries have absolute Date.now() timestamps.
+ * recordingStartMs is the sync point that converts between the two.
  */
 export function diarize(
-  _segments: SttSegment[],
-  _speakerLog: SpeakerLog,
-  _recordingStartMs: number,
+  segments: SttSegment[],
+  speakerLog: SpeakerLog,
+  recordingStartMs: number,
 ): DiarizedSegment[] {
-  if (import.meta.env.DEV) console.log('[diarize] called — TODO: implement');
-  return [];
+  if (import.meta.env.DEV) {
+    console.log('[diarize] start — segments:', segments.length, '| speakerLog entries:', speakerLog.log.length);
+  }
+
+  const result: DiarizedSegment[] = segments.map(seg => {
+    const segStartMs = recordingStartMs + seg.start * 1000;
+    const segEndMs   = recordingStartMs + seg.end   * 1000;
+
+    let bestSpeaker = 'Unknown';
+    let bestOverlap = -Infinity;
+    let bestDist    = Infinity;
+
+    for (const entry of speakerLog.log) {
+      const overlap = Math.min(segEndMs, entry.endMs) - Math.max(segStartMs, entry.startMs);
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        bestSpeaker = entry.name;
+      }
+      // Track closest entry by distance for fallback (no-overlap case)
+      const dist = Math.abs(entry.startMs - segStartMs);
+      if (overlap <= 0 && dist < bestDist) {
+        bestDist = dist;
+        if (bestOverlap <= 0) bestSpeaker = entry.name;
+      }
+    }
+
+    return { start: seg.start, end: seg.end, speaker: bestSpeaker, text: seg.text };
+  });
+
+  if (import.meta.env.DEV) {
+    console.log('[diarize] done — diarized segments:', result.length);
+  }
+  return result;
 }

@@ -27,7 +27,10 @@ export async function transcribeAudio(
   if (!res.ok) {
     const err = await res.text();
     console.error('[stt] Whisper API error:', res.status, err);
-    throw new Error(`Whisper API error ${res.status}: ${err}`);
+    if (res.status === 401) throw new Error('Неверный OpenAI API ключ. Проверьте настройки.');
+    if (res.status === 429) throw new Error('OpenAI: превышен лимит запросов. Подождите и попробуйте снова.');
+    if (res.status === 413) throw new Error('Аудио слишком большое для Whisper API (лимит 25 МБ).');
+    throw new Error(`OpenAI Whisper: ошибка ${res.status}`);
   }
 
   const data: WhisperResponse = await res.json();
