@@ -54,7 +54,36 @@ export interface PipelineResult {
   actionItems: string[];
 }
 
+/** STT provider selection */
+export type SttProvider = 'openai' | 'runpod';
+
+/** RunPod Faster Whisper model choices */
+export type RunPodWhisperModel =
+  | 'tiny' | 'base' | 'small' | 'medium'
+  | 'large-v1' | 'large-v2' | 'large-v3'
+  | 'distil-large-v2' | 'distil-large-v3'
+  | 'turbo';
+
 /** API keys stored securely in chrome.storage.local */
 export interface ApiKeys {
   openaiKey: string;
+  sttProvider: SttProvider;
+  runpodApiKey?: string;
+  runpodEndpointId?: string;
+  runpodModel?: RunPodWhisperModel;
+}
+
+/** RunPod Faster Whisper output (inside the envelope) */
+export interface RunPodSttOutput {
+  segments: SttSegment[];
+  detected_language: string;
+  transcription: string;
+}
+
+/** RunPod serverless API response envelope */
+export interface RunPodResponse {
+  id: string;
+  status: 'COMPLETED' | 'FAILED' | 'IN_QUEUE' | 'IN_PROGRESS';
+  output?: RunPodSttOutput;
+  error?: string;
 }
