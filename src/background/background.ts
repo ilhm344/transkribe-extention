@@ -174,6 +174,14 @@ chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
       void handleMeetingEnded();
       break;
 
+    case MSG.MIC_ACTIVITY:
+    case MSG.TAB_ACTIVITY:
+      // [FIX] Forward audio levels from offscreen to content script for speaker detection
+      if (activeTabId !== null) {
+        chrome.tabs.sendMessage(activeTabId, message).catch(() => {});
+      }
+      break;
+
     case MSG.OFFSCREEN_LOG:
       console.log('[offscreen]', ...(message.payload?.args ?? []));
       break;
@@ -284,8 +292,23 @@ async function handleAudioBlobReady(msg: AudioBlobReadyMessage): Promise<void> {
 // ─── Handler: SPEAKER_LOG_READY ───────────────────────────────────────────────
 
 async function handleSpeakerLogReady(msg: SpeakerLogReadyMessage): Promise<void> {
-  console.debug('[bg] SPEAKER_LOG_READY received, entries:', msg.payload.log.log.length);
-  pendingSpeakerLog = msg.payload.log;
+  const { log } = msg.payload;
+  console.debug('[bg] SPEAKER_LOG_READY received, entries:', log.log.length);
+
+  // [FIX] Log speaker log contents for debugging
+  if (log.log.length > 0) {
+    console.log('[bg] === SPEAKER LOG ===');
+    console.log('[bg] recordingStartMs:', log.recordingStartMs);
+    for (const entry of log.log) {
+      const startSec = ((entry.startMs - log.recordingStartMs) / 1000).toFixed(1);
+      const endSec = ((entry.endMs - log.recordingStartMs) / 1000).toFixed(1);
+      const dur = ((entry.endMs - entry.startMs) / 1000).toFixed(1);
+      console.log(`[bg]   ${startSec}s → ${endSec}s (${dur}s) "${entry.name}"`);
+    }
+    console.log('[bg] === END SPEAKER LOG ===');
+  }
+
+  pendingSpeakerLog = log;
   await checkBothReady();
 }
 

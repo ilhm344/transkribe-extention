@@ -18,6 +18,8 @@ let mediaRecorder: MediaRecorder | null = null;
 let chunks: BlobPart[] = [];
 let recordingStartMs = 0;
 let totalBytesRecorded = 0;
+let micLevelInterval: ReturnType<typeof setInterval> | null = null;
+let tabLevelInterval: ReturnType<typeof setInterval> | null = null;
 
 // ─── Message listener ─────────────────────────────────────────────────────────
 
@@ -94,9 +96,51 @@ async function handleStartOffscreen(msg: StartOffscreenMessage): Promise<void> {
       const micSource = audioCtx.createMediaStreamSource(micStream);
       micSource.connect(destination);
       log('✓ mic connected to mix');
+
+      // [FIX] Monitor mic audio level for self-speaking detection.
+      // Speaker detector in main-world only sees incoming WebRTC audio (remote),
+      // so offscreen sends mic level events → background → content → tracker.
+      const micAnalyser = audioCtx.createAnalyser();
+      micAnalyser.fftSize = 256;
+      micSource.connect(micAnalyser);
+      const micData = new Uint8Array(micAnalyser.frequencyBinCount);
+      const MIC_THRESHOLD = 5;
+
+      micLevelInterval = setInterval(() => {
+        micAnalyser.getByteFrequencyData(micData);
+        const avg = micData.reduce((a, b) => a + b, 0) / micData.length;
+        if (avg > MIC_THRESHOLD) {
+          chrome.runtime.sendMessage({
+            type: MSG.MIC_ACTIVITY,
+            payload: { level: Math.round(avg * 10) / 10 },
+          }).catch(() => {});
+        }
+      }, 250);
+      log('[FIX] mic level monitoring started (250ms, threshold:', MIC_THRESHOLD, ')');
     } else {
       log('✗ NO mic in mix — only tab audio');
     }
+
+    // [FIX] Monitor tab audio level for remote-speaking detection.
+    // Tab capture audio = remote participants (echo cancellation removes self).
+    // This works even when main-world AnalyserNode returns zeros during tab capture.
+    const tabAnalyser = audioCtx.createAnalyser();
+    tabAnalyser.fftSize = 256;
+    tabSource.connect(tabAnalyser);
+    const tabData = new Uint8Array(tabAnalyser.frequencyBinCount);
+    const TAB_THRESHOLD = 5;
+
+    tabLevelInterval = setInterval(() => {
+      tabAnalyser.getByteFrequencyData(tabData);
+      const avg = tabData.reduce((a, b) => a + b, 0) / tabData.length;
+      if (avg > TAB_THRESHOLD) {
+        chrome.runtime.sendMessage({
+          type: MSG.TAB_ACTIVITY,
+          payload: { level: Math.round(avg * 10) / 10 },
+        }).catch(() => {});
+      }
+    }, 250);
+    log('[FIX] tab audio level monitoring started (250ms, threshold:', TAB_THRESHOLD, ')');
 
     const mixedTracks = destination.stream.getAudioTracks();
     log('mixed stream — tracks:', mixedTracks.length,
@@ -177,6 +221,16 @@ async function handleStopOffscreen(): Promise<void> {
   }
 
   mediaRecorder.stop();
+
+  // [FIX] Stop mic and tab level monitoring
+  if (micLevelInterval) {
+    clearInterval(micLevelInterval);
+    micLevelInterval = null;
+  }
+  if (tabLevelInterval) {
+    clearInterval(tabLevelInterval);
+    tabLevelInterval = null;
+  }
 
   tabStream?.getTracks().forEach(t => {
     log('stop tab track:', t.kind, t.label, '| enabled:', t.enabled, '| muted:', t.muted);

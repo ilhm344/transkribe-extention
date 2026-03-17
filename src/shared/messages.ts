@@ -19,6 +19,10 @@ export const MSG = {
   // content → background
   SPEAKER_LOG_READY: 'SPEAKER_LOG_READY',
   MEETING_ENDED:     'MEETING_ENDED',
+  // offscreen → background → content (mic audio level for self-speaking detection)
+  MIC_ACTIVITY:      'MIC_ACTIVITY',
+  // offscreen → background → content (tab audio level for remote-speaking detection)
+  TAB_ACTIVITY:      'TAB_ACTIVITY',
   // offscreen → background (diagnostics)
   OFFSCREEN_LOG:     'OFFSCREEN_LOG',
 } as const;
