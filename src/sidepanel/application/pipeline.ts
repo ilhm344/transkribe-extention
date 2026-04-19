@@ -1,4 +1,4 @@
-import { transcribeAudio } from '../infrastructure/stt';
+import { transcribe } from '../infrastructure/stt';
 import { summarize } from '../infrastructure/claude';
 import { diarize } from './diarize';
 import { loadApiKeys } from '../../shared/storage';
@@ -28,8 +28,17 @@ export async function runPipeline(data: MeetingData, onProgress?: OnProgress): P
     '| speakerLog entries:', data.speakerLog.log.length);
 
   const keys = await loadApiKeys();
-  if (!keys?.openaiKey) {
-    throw new Error('API ключ не настроен. Откройте Настройки и введите ваш OpenAI ключ.');
+  if (!keys) {
+    throw new Error('API ключи не настроены. Откройте Настройки.');
+  }
+  const provider = keys.sttProvider ?? 'openai';
+  console.log('[pipeline] stt provider:', provider);
+  // OpenAI key is always required (for summarization even with RunPod STT)
+  if (!keys.openaiKey) {
+    throw new Error('OpenAI API ключ не настроен. Он нужен для AI-резюме. Откройте Настройки.');
+  }
+  if (provider === 'runpod' && (!keys.runpodApiKey || !keys.runpodEndpointId)) {
+    throw new Error('RunPod API ключ или Endpoint ID не настроены. Откройте Настройки.');
   }
 
   // Step 1: Transcription
@@ -38,7 +47,7 @@ export async function runPipeline(data: MeetingData, onProgress?: OnProgress): P
   const audioMb = (audioBlob.size / 1024 / 1024).toFixed(2);
   console.log('[pipeline] step 1 — transcribing | blob:', audioMb, 'MB | mimeType:', data.audioMimeType);
   const t1 = Date.now();
-  const whisper = await transcribeAudio(audioBlob, keys.openaiKey);
+  const whisper = await transcribe(audioBlob, keys);
   console.log('[pipeline] step 1 done — Whisper took', Date.now() - t1, 'ms',
     '| language:', whisper.language, '| duration:', whisper.duration?.toFixed(1), 's',
     '| segments:', whisper.segments.length,
