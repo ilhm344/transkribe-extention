@@ -87,3 +87,65 @@ export interface RunPodResponse {
   output?: RunPodSttOutput;
   error?: string;
 }
+
+// ─── Streaming backend types ─────────────────────────────────────────────────
+
+/** Structured speaker event emitted by SpeakerTracker on start/end of segment */
+export interface SpeakerEvent {
+  kind: 'start' | 'end';
+  name: string;
+  /** Offset in ms from recordingStartMs. Single clock anchor across contexts. */
+  offsetMs: number;
+}
+
+/** One rotated chunk of audio waiting to be uploaded (persisted in IDB) */
+export interface ChunkRecord {
+  /** Synthetic primary key for IDB (see idb.ts makeChunkId). */
+  id: string;
+  /** Null until POST /sessions succeeds; chunks queued with null get backfilled. */
+  sessionId: string | null;
+  index: number;
+  blob: Blob;
+  offsetMs: number;
+  durationMs: number;
+  isFinal: boolean;
+  attempts: number;
+  createdAt: number;
+}
+
+/** Metadata sent to backend on session creation */
+export interface SessionMeta {
+  recordingStartMs: number;
+  platform: 'meet' | 'telemost';
+  meetingId?: string;
+}
+
+/** Backend configuration stored in chrome.storage.local */
+export interface BackendConfig {
+  /** Base URL, e.g. https://transkribe-api.example.com (no trailing slash). */
+  url: string;
+  /** Shared secret sent as X-API-Key header. */
+  apiSecret: string;
+  /** Master toggle — if false, chunks are not streamed at all. */
+  enabled: boolean;
+}
+
+/** Runtime-configurable speaker detection parameters */
+export interface SpeakerSettings {
+  /** Pause longer than this ends the current segment and starts a new one. */
+  pauseThresholdMs: number;
+}
+
+/** State of an in-flight streaming session, persisted for recovery after restart */
+export interface ActiveSession {
+  /** Null while POST /sessions has not yet succeeded. */
+  sessionId: string | null;
+  recordingStartMs: number;
+  status: 'active' | 'completing' | 'done' | 'abandoned';
+  /** Filled at STOP; backend uses it to verify drain. */
+  expectedChunks?: number;
+  lastChunkIndex: number;
+  startedAt: number;
+  platform: 'meet' | 'telemost';
+  meetingId?: string;
+}
